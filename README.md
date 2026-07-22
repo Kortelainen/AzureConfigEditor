@@ -2,6 +2,8 @@
 
 A single-file, offline editor for Azure App Configuration exports. Open `index.html` directly in a browser — no install, no server, no build step.
 
+Hosted online: https://kortelainen.github.io/azure-config-editor/
+
 <img width="2556" height="624" alt="image" src="https://github.com/user-attachments/assets/160cea2c-972c-4f2e-8a7e-07cc34d82362" />
 
 
