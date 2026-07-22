@@ -1,0 +1,306 @@
+{
+	"items": [
+		{
+			"key": "App:DisplayName",
+			"value": "Contoso Portal (Dev)",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:DisplayName",
+			"value": "Contoso Portal (Test)",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:DisplayName",
+			"value": "Contoso Portal (Staging)",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:DisplayName",
+			"value": "Contoso Portal",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:LogLevel",
+			"value": "Debug",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:LogLevel",
+			"value": "Debug",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:LogLevel",
+			"value": "Information",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:LogLevel",
+			"value": "Warning",
+			"label": "Production",
+			"content_type": "",
+			"tags": {
+				"owner": "platform-team"
+			}
+		},
+		{
+			"key": "App:MaintenanceMode",
+			"value": "false",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:MaintenanceMode",
+			"value": "false",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:MaintenanceMode",
+			"value": "false",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "App:MaintenanceMode",
+			"value": "false",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:BaseUrl",
+			"value": "https://api-dev.contoso-example.com",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:BaseUrl",
+			"value": "https://api-test.contoso-example.com",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:BaseUrl",
+			"value": "https://api-staging.contoso-example.com",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:BaseUrl",
+			"value": "https://api.contoso-example.com",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:TimeoutSeconds",
+			"value": "30",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:TimeoutSeconds",
+			"value": "30",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:TimeoutSeconds",
+			"value": "15",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:TimeoutSeconds",
+			"value": "15",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:RetryCount",
+			"value": "3",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Api:RetryCount",
+			"value": "3",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Cache:DurationMinutes",
+			"value": "1",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Cache:DurationMinutes",
+			"value": "5",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Cache:DurationMinutes",
+			"value": "15",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Cache:DurationMinutes",
+			"value": "60",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Features:NewDashboard",
+			"value": "true",
+			"label": "Dev",
+			"content_type": "application/vnd.microsoft.appconfig.ff+json;charset=utf-8",
+			"tags": {
+				"team": "growth"
+			}
+		},
+		{
+			"key": "Features:NewDashboard",
+			"value": "true",
+			"label": "Test",
+			"content_type": "application/vnd.microsoft.appconfig.ff+json;charset=utf-8",
+			"tags": {
+				"team": "growth"
+			}
+		},
+		{
+			"key": "Features:DarkMode",
+			"value": "true",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Features:DarkMode",
+			"value": "true",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Features:DarkMode",
+			"value": "true",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Features:DarkMode",
+			"value": "false",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Enabled",
+			"value": "false",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Enabled",
+			"value": "true",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Enabled",
+			"value": "true",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Enabled",
+			"value": "true",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Provider",
+			"value": "Console",
+			"label": "Dev",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Provider",
+			"value": "Console",
+			"label": "Test",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Provider",
+			"value": "SmtpRelay",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Notifications:Provider",
+			"value": "SmtpRelay",
+			"label": "Production",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Monitoring:SampleRate",
+			"value": "1.0",
+			"label": "Staging",
+			"content_type": "",
+			"tags": {}
+		},
+		{
+			"key": "Monitoring:SampleRate",
+			"value": "0.1",
+			"label": "Production",
+			"content_type": "",
+			"tags": {
+				"owner": "platform-team"
+			}
+		}
+	]
+}

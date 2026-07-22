@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Azure Config Editor</title>
+<style>
+  :root {
+    --bg: #1e1f22;
+    --panel: #2b2d31;
+    --panel-2: #313338;
+    --border: #40434a;
+    --text: #e6e6e6;
+    --text-dim: #9a9ca0;
+    --accent: #4f8cff;
+    --accent-dim: #2d4a80;
+    --danger: #e5534b;
+    --warn: #d6a54c;
+    --ok: #4caf7d;
+    --mono: "Cascadia Code", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", Tahoma, sans-serif;
+    font-size: 13px;
+  }
+  #app { display: flex; flex-direction: column; height: 100vh; }
+
+  /* Toolbar */
+  #toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  #toolbar .sep { width: 1px; align-self: stretch; background: var(--border); margin: 0 4px; }
+  button {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 6px 10px; cursor: pointer; font-size: 12px;
+  }
+  button:hover { background: #3a3d44; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  button.primary:hover { background: #6ba0ff; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  input[type=text], input[type=search] {
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px;
+    padding: 6px 8px; font-size: 12px;
+  }
+  #fileLabel { color: var(--text-dim); font-family: var(--mono); font-size: 12px; margin-left: 4px; }
+  #dirtyDot { color: var(--warn); font-weight: bold; display: none; margin-left: 4px; }
+
+  /* Empty state */
+  #emptyState {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 12px; color: var(--text-dim);
+  }
+  #emptyState h2 { color: var(--text); font-weight: 500; }
+
+  /* Table area */
+  #tableWrap { flex: 1; overflow: auto; display: none; }
+  table { border-collapse: collapse; width: max-content; min-width: 100%; }
+  th, td { border: 1px solid var(--border); padding: 0; }
+  th {
+    background: var(--panel); position: sticky; top: 0; z-index: 3;
+    padding: 6px 8px; text-align: left; font-weight: 600;
+    white-space: nowrap; max-width: 220px;
+  }
+  th.keyCol, td.keyCol {
+    position: sticky; left: 0; z-index: 2; background: var(--panel);
+    min-width: 260px; max-width: 260px;
+  }
+  th.keyCol { z-index: 4; }
+  td.keyCol { z-index: 1; }
+  .colHead { display: flex; align-items: center; gap: 6px; justify-content: space-between; }
+  .colHead .name { cursor: text; }
+  .colHead .del { color: var(--text-dim); cursor: pointer; visibility: hidden; }
+  th:hover .colHead .del { visibility: visible; }
+  .colHead .del:hover { color: var(--danger); }
+
+  td.keyCol .keyRow { display: flex; align-items: center; gap: 6px; padding: 4px 8px; }
+  td.keyCol .keyName { flex: 1; cursor: text; font-family: var(--mono); word-break: break-all; }
+  td.keyCol .del { color: var(--text-dim); cursor: pointer; visibility: hidden; }
+  tr:hover td.keyCol .del { visibility: visible; }
+  td.keyCol .del:hover { color: var(--danger); }
+
+  td.cell { min-width: 180px; max-width: 320px; position: relative; height: 32px; }
+  td.cell .cellInner {
+    display: flex; align-items: center; height: 100%; padding: 0 8px; gap: 4px;
+  }
+  td.cell .val { flex: 1; padding: 6px 0; cursor: text; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  td.cell.empty .val { color: var(--text-dim); font-style: italic; }
+  td.cell .metaBtn {
+    color: var(--text-dim); cursor: pointer; font-size: 11px; visibility: hidden; flex-shrink: 0;
+  }
+  td.cell:hover .metaBtn { visibility: visible; }
+  td.cell .metaBtn.hasMeta { visibility: visible; color: var(--accent); }
+  td.cell .clearBtn {
+    color: var(--text-dim); cursor: pointer; visibility: hidden; flex-shrink: 0;
+  }
+  td.cell:hover .clearBtn { visibility: visible; }
+  td.cell .clearBtn:hover { color: var(--danger); }
+  td.cell input.editBox {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--accent);
+    color: var(--text); padding: 5px 6px; font-size: 13px; border-radius: 3px;
+  }
+  tr.hiddenRow { display: none; }
+
+  /* Modal */
+  .modalOverlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: none; align-items: center; justify-content: center; z-index: 10;
+  }
+  .modalOverlay.show { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    width: 520px; max-width: 90vw; max-height: 85vh; overflow: auto;
+    padding: 16px 18px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .modal h3 { margin: 0 0 4px 0; }
+  .modal label { color: var(--text-dim); font-size: 12px; display: block; margin-bottom: 3px; }
+  .modal textarea {
+    width: 100%; min-height: 90px; background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-family: var(--mono); font-size: 12px;
+  }
+  .modal .row { display: flex; gap: 10px; }
+  .modal .row > div { flex: 1; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+  .modal .err { color: var(--danger); font-size: 12px; display: none; }
+
+  /* Compare modal specifics */
+  #compareModal .modal { width: 720px; }
+  .compareHeader { display: flex; align-items: center; gap: 10px; }
+  .compareHeader select { flex: 1; background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px; }
+  .compareHeader .swap { cursor: pointer; }
+  .missingList { max-height: 320px; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+  .missingRow { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  .missingRow:last-child { border-bottom: none; }
+  .missingRow .k { font-family: var(--mono); flex: 1; word-break: break-all; }
+  .missingRow .v { color: var(--text-dim); font-family: var(--mono); max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .compareStats { color: var(--text-dim); font-size: 12px; }
+  .noneMissing { padding: 20px; text-align: center; color: var(--ok); }
+
+  ::-webkit-scrollbar { width: 12px; height: 12px; }
+  ::-webkit-scrollbar-thumb { background: #4a4d54; border-radius: 6px; border: 3px solid var(--bg); }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="toolbar">
+    <button id="btnOpen">Open JSON…</button>
+    <button id="btnSave" disabled>Save</button>
+    <button id="btnSaveAs">Save As…</button>
+    <button id="btnNew">New</button>
+    <div class="sep"></div>
+    <button id="btnImportCsv" title="Replaces the current grid with values from a CSV file (Key column + one column per label). Content type and tags are not carried by CSV.">Import CSV…</button>
+    <button id="btnExportCsv" disabled title="Exports the current grid as CSV (Key column + one column per label, values only) — opens directly in Excel.">Export CSV…</button>
+    <div class="sep"></div>
+    <button id="btnAddKey" disabled>+ Key</button>
+    <button id="btnAddLabel" disabled>+ Label</button>
+    <button id="btnCompare" disabled>Compare labels…</button>
+    <div class="sep"></div>
+    <input type="search" id="search" placeholder="Filter keys…" disabled style="width:220px">
+    <span style="flex:1"></span>
+    <span id="fileLabel"></span>
+    <span id="dirtyDot" title="Unsaved changes">●</span>
+  </div>
+
+  <div id="emptyState">
+    <h2>Azure Config Editor</h2>
+    <p>Open an exported App Configuration JSON file (an object with an <code>items</code> array) to get started.</p>
+    <button class="primary" id="btnOpen2">Open JSON…</button>
+    <button id="btnNew2">Start with a blank file</button>
+  </div>
+
+  <div id="tableWrap">
+    <table id="grid"></table>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="application/json" style="display:none">
+<input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none">
+
+<!-- Metadata modal -->
+<div class="modalOverlay" id="metaModal">
+  <div class="modal">
+    <h3>Cell details</h3>
+    <div style="color:var(--text-dim);font-family:var(--mono);font-size:12px" id="metaCellLabel"></div>
+    <div>
+      <label>Value</label>
+      <textarea id="metaValue" style="min-height:50px"></textarea>
+    </div>
+    <div>
+      <label>Content type</label>
+      <input type="text" id="metaContentType" style="width:100%">
+    </div>
+    <div>
+      <label>Tags (JSON object)</label>
+      <textarea id="metaTags"></textarea>
+    </div>
+    <div class="err" id="metaErr">Tags must be valid JSON object.</div>
+    <div class="actions">
+      <button id="metaCancel">Cancel</button>
+      <button class="primary" id="metaSave">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Compare modal -->
+<div class="modalOverlay" id="compareModal">
+  <div class="modal">
+    <h3>Compare labels</h3>
+    <div class="compareHeader">
+      <select id="cmpFrom"></select>
+      <span class="swap" id="cmpSwap" title="Swap">⇄</span>
+      <select id="cmpTo"></select>
+    </div>
+    <div class="compareStats" id="cmpStats"></div>
+    <div class="missingList" id="cmpList"></div>
+    <div class="actions">
+      <button id="cmpClose">Close</button>
+      <button class="primary" id="cmpCopyAll">Copy all checked to target</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- State ----------------------------------------------------------
+  let labels = [];           // ordered label names
+  let keys = [];             // ordered key names
+  let cells = {};            // cells[key][label] = {value, content_type, tags}
+  let fileHandle = null;     // FileSystemFileHandle when available
+  let fileName = "";
+  let dirty = false;
+  let editingCell = null;    // {key,label} currently being edited inline
+
+  const el = id => document.getElementById(id);
+  const grid = el("grid");
+  const tableWrap = el("tableWrap");
+  const emptyState = el("emptyState");
+
+  function markDirty(v){ dirty = v; el("dirtyDot").style.display = v ? "inline" : "none"; }
+
+  function ensureKey(k){ if(!keys.includes(k)) keys.push(k); if(!cells[k]) cells[k] = {}; }
+  function ensureLabel(l){ if(!labels.includes(l)) labels.push(l); }
+
+  function loadFromItems(items){
+    labels = []; keys = []; cells = {};
+    (items || []).forEach(it => {
+      const k = it.key ?? "";
+      const l = it.label ?? "";
+      ensureKey(k); ensureLabel(l);
+      cells[k][l] = {
+        value: it.value ?? "",
+        content_type: it.content_type ?? "",
+        tags: it.tags ?? {}
+      };
+    });
+    render();
+  }
+
+  function toItems(){
+    const out = [];
+    const sortedKeys = [...keys].sort((a,b)=>a.localeCompare(b));
+    sortedKeys.forEach(k => {
+      labels.forEach(l => {
+        const c = cells[k] && cells[k][l];
+        if (c && c.value !== undefined && !(c.value === "" && c._placeholder)) {
+          if (cells[k][l] && "value" in cells[k][l] && cells[k][l]._exists !== false) {
+            out.push({ key: k, value: c.value, label: l, content_type: c.content_type || "", tags: c.tags || {} });
+          }
+        }
+      });
+    });
+    return out;
+  }
+
+  // Track which cells actually "exist" vs are just rendered blank
+  // (a cell object is only created in cells[k][l] when it has real data)
+
+  function render(){
+    const hasData = keys.length > 0 || labels.length > 0;
+    emptyState.style.display = hasData ? "none" : "flex";
+    tableWrap.style.display = hasData ? "block" : "none";
+    el("btnAddKey").disabled = false;
+    el("btnAddLabel").disabled = false;
+    el("btnCompare").disabled = labels.length < 2;
+    el("btnExportCsv").disabled = !hasData;
+    el("search").disabled = false;
+    if (!hasData) return;
+
+    const filter = el("search").value.trim().toLowerCase();
+
+    let html = "<thead><tr><th class='keyCol'>Key</th>";
+    labels.forEach((l, li) => {
+      html += `<th data-label-idx="${li}"><div class="colHead"><span class="name" data-role="labelName">${escapeHtml(l)}</span><span class="del" data-role="delLabel" title="Delete label column">✕</span></div></th>`;
+    });
+    html += "</tr></thead><tbody>";
+
+    keys.forEach((k, ki) => {
+      const visible = !filter || k.toLowerCase().includes(filter);
+      html += `<tr data-key-idx="${ki}" class="${visible ? "" : "hiddenRow"}">`;
+      html += `<td class="keyCol"><div class="keyRow"><span class="keyName" data-role="keyName">${escapeHtml(k)}</span><span class="del" data-role="delKey" title="Delete key row">✕</span></div></td>`;
+      labels.forEach((l) => {
+        const c = cells[k] && cells[k][l];
+        const has = !!c;
+        html += `<td class="cell ${has ? "" : "empty"}" data-key="${encodeAttr(k)}" data-label="${encodeAttr(l)}">`;
+        html += `<div class="cellInner">`;
+        html += `<span class="val" data-role="val">${has ? escapeHtml(c.value) : "click to add"}</span>`;
+        if (has) html += `<span class="clearBtn" data-role="clear" title="Clear value">✕</span>`;
+        html += `<span class="metaBtn ${has && (c.content_type || (c.tags && Object.keys(c.tags).length)) ? "hasMeta" : ""}" data-role="meta" title="Content type / tags">⋯</span>`;
+        html += `</div></td>`;
+      });
+      html += "</tr>";
+    });
+    html += "</tbody>";
+    grid.innerHTML = html;
+    attachGridEvents();
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function encodeAttr(s){ return escapeHtml(s); }
+
+  // ---- Grid interactions ----------------------------------------------
+  function attachGridEvents(){
+    grid.querySelectorAll("td.cell").forEach(td => {
+      const key = td.dataset.key, label = td.dataset.label;
+      td.querySelector("[data-role=val]").addEventListener("click", () => startEditCell(td, key, label));
+      const clearBtn = td.querySelector("[data-role=clear]");
+      if (clearBtn) clearBtn.addEventListener("click", (e) => { e.stopPropagation(); clearCell(key, label); });
+      td.querySelector("[data-role=meta]").addEventListener("click", (e) => { e.stopPropagation(); openMetaModal(key, label); });
+    });
+    grid.querySelectorAll("[data-role=keyName]").forEach(spanEl => {
+      spanEl.addEventListener("dblclick", () => renameKey(spanEl.closest("tr").dataset.keyIdx));
+    });
+    grid.querySelectorAll("[data-role=delKey]").forEach(spanEl => {
+      spanEl.addEventListener("click", () => deleteKey(spanEl.closest("tr").dataset.keyIdx));
+    });
+    grid.querySelectorAll("[data-role=labelName]").forEach(spanEl => {
+      spanEl.addEventListener("dblclick", () => renameLabel(spanEl.closest("th").dataset.labelIdx));
+    });
+    grid.querySelectorAll("[data-role=delLabel]").forEach(spanEl => {
+      spanEl.addEventListener("click", () => deleteLabel(spanEl.closest("th").dataset.labelIdx));
+    });
+  }
+
+  function startEditCell(td, key, label){
+    if (editingCell) return;
+    editingCell = {key, label};
+    const c = (cells[key] && cells[key][label]) || {value:"", content_type:"", tags:{}};
+    const inner = td.querySelector(".cellInner");
+    inner.innerHTML = `<input type="text" class="editBox" value="${encodeAttr(c.value)}">`;
+    const input = inner.querySelector("input");
+    input.focus(); input.select();
+    function commit(save){
+      editingCell = null;
+      if (save){
+        const newVal = input.value;
+        if (newVal === "" && !(cells[key] && cells[key][label])) {
+          // nothing to do, stays empty
+        } else {
+          if (!cells[key]) cells[key] = {};
+          const existing = cells[key][label] || {content_type:"", tags:{}};
+          cells[key][label] = { value: newVal, content_type: existing.content_type || "", tags: existing.tags || {} };
+          markDirty(true);
+        }
+      }
+      render();
+    }
+    input.addEventListener("blur", () => commit(true));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); input.blur(); }
+      if (e.key === "Escape") { e.preventDefault(); editingCell = null; render(); }
+    });
+  }
+
+  function clearCell(key, label){
+    if (cells[key]) delete cells[key][label];
+    markDirty(true);
+    render();
+  }
+
+  function renameKey(idx){
+    const oldKey = keys[idx];
+    const next = prompt("Rename key:", oldKey);
+    if (next === null || next === oldKey) return;
+    if (!next.trim()) { alert("Key cannot be empty."); return; }
+    if (keys.includes(next)) { alert("A key with that name already exists."); return; }
+    keys[idx] = next;
+    cells[next] = cells[oldKey];
+    delete cells[oldKey];
+    markDirty(true);
+    render();
+  }
+
+  function deleteKey(idx){
+    const k = keys[idx];
+    if (!confirm(`Delete key "${k}" and all its values across all labels?`)) return;
+    delete cells[k];
+    keys.splice(idx, 1);
+    markDirty(true);
+    render();
+  }
+
+  function renameLabel(idx){
+    const oldLabel = labels[idx];
+    const next = prompt("Rename label:", oldLabel);
+    if (next === null || next === oldLabel) return;
+    if (labels.includes(next)) { alert("A label with that name already exists."); return; }
+    labels[idx] = next;
+    keys.forEach(k => {
+      if (cells[k] && cells[k][oldLabel] !== undefined) {
+        cells[k][next] = cells[k][oldLabel];
+        delete cells[k][oldLabel];
+      }
+    });
+    markDirty(true);
+    render();
+  }
+
+  function deleteLabel(idx){
+    const l = labels[idx];
+    if (!confirm(`Delete label "${l}" and all its values across all keys?`)) return;
+    keys.forEach(k => { if (cells[k]) delete cells[k][l]; });
+    labels.splice(idx, 1);
+    markDirty(true);
+    render();
+  }
+
+  // ---- Add key / label --------------------------------------------------
+  el("btnAddKey").addEventListener("click", () => {
+    let base = "NewKey", n = 1, name = base;
+    while (keys.includes(name)) { name = `${base}${n++}`; }
+    keys.unshift(name);
+    cells[name] = {};
+    markDirty(true);
+    render();
+  });
+  el("btnAddLabel").addEventListener("click", () => {
+    let base = "NewLabel", n = 1, name = base;
+    while (labels.includes(name)) { name = `${base}${n++}`; }
+    labels.push(name);
+    markDirty(true);
+    render();
+  });
+
+  el("search").addEventListener("input", render);
+
+  // ---- Metadata modal ---------------------------------------------------
+  let metaCtx = null;
+  function openMetaModal(key, label){
+    metaCtx = {key, label};
+    const c = (cells[key] && cells[key][label]) || {value:"", content_type:"", tags:{}};
+    el("metaCellLabel").textContent = `${key}  ·  ${label}`;
+    el("metaValue").value = c.value || "";
+    el("metaContentType").value = c.content_type || "";
+    el("metaTags").value = JSON.stringify(c.tags || {}, null, 2);
+    el("metaErr").style.display = "none";
+    el("metaModal").classList.add("show");
+  }
+  el("metaCancel").addEventListener("click", () => el("metaModal").classList.remove("show"));
+  el("metaSave").addEventListener("click", () => {
+    let tags;
+    try { tags = JSON.parse(el("metaTags").value || "{}"); if (typeof tags !== "object" || Array.isArray(tags)) throw 0; }
+    catch(e){ el("metaErr").style.display = "block"; return; }
+    const {key, label} = metaCtx;
+    if (!cells[key]) cells[key] = {};
+    cells[key][label] = { value: el("metaValue").value, content_type: el("metaContentType").value, tags };
+    markDirty(true);
+    el("metaModal").classList.remove("show");
+    render();
+  });
+
+  // ---- Compare modal -----------------------------------------------------
+  el("btnCompare").addEventListener("click", openCompareModal);
+  function openCompareModal(){
+    const fromSel = el("cmpFrom"), toSel = el("cmpTo");
+    fromSel.innerHTML = labels.map(l => `<option value="${encodeAttr(l)}">${escapeHtml(l)}</option>`).join("");
+    toSel.innerHTML = labels.map(l => `<option value="${encodeAttr(l)}">${escapeHtml(l)}</option>`).join("");
+    if (labels.length > 1) toSel.selectedIndex = 1;
+    renderCompare();
+    el("compareModal").classList.add("show");
+  }
+  function renderCompare(){
+    const from = el("cmpFrom").value, to = el("cmpTo").value;
+    const list = el("cmpList");
+    if (!from || !to || from === to){
+      list.innerHTML = `<div class="noneMissing">Pick two different labels.</div>`;
+      el("cmpStats").textContent = "";
+      return;
+    }
+    const missing = keys.filter(k => cells[k] && cells[k][from] && !cells[k][to]);
+    el("cmpStats").textContent = `${missing.length} key(s) present in "${from}" but missing in "${to}"`;
+    if (missing.length === 0){
+      list.innerHTML = `<div class="noneMissing">No missing keys — "${escapeHtml(to)}" already has everything "${escapeHtml(from)}" has.</div>`;
+      return;
+    }
+    list.innerHTML = missing.map(k => {
+      const v = cells[k][from].value;
+      return `<div class="missingRow"><input type="checkbox" checked data-key="${encodeAttr(k)}"><span class="k">${escapeHtml(k)}</span><span class="v" title="${encodeAttr(v)}">${escapeHtml(v)}</span></div>`;
+    }).join("");
+  }
+  el("cmpFrom").addEventListener("change", renderCompare);
+  el("cmpTo").addEventListener("change", renderCompare);
+  el("cmpSwap").addEventListener("click", () => {
+    const f = el("cmpFrom").value, t = el("cmpTo").value;
+    el("cmpFrom").value = t; el("cmpTo").value = f;
+    renderCompare();
+  });
+  el("cmpClose").addEventListener("click", () => el("compareModal").classList.remove("show"));
+  el("cmpCopyAll").addEventListener("click", () => {
+    const from = el("cmpFrom").value, to = el("cmpTo").value;
+    if (!from || !to || from === to) return;
+    let count = 0;
+    el("cmpList").querySelectorAll("input[type=checkbox]:checked").forEach(cb => {
+      const k = cb.dataset.key;
+      const src = cells[k][from];
+      if (!cells[k]) cells[k] = {};
+      cells[k][to] = { value: src.value, content_type: src.content_type || "", tags: {...(src.tags||{})} };
+      count++;
+    });
+    if (count > 0) { markDirty(true); render(); }
+    renderCompare();
+    if (count > 0) el("cmpStats").textContent += ` — copied ${count} value(s) to "${to}"`;
+  });
+
+  // ---- File open / save --------------------------------------------------
+  const supportsFS = "showOpenFilePicker" in window;
+
+  el("btnOpen").addEventListener("click", doOpen);
+  el("btnOpen2").addEventListener("click", doOpen);
+  el("btnNew").addEventListener("click", doNew);
+  el("btnNew2").addEventListener("click", doNew);
+  el("btnSave").addEventListener("click", doSave);
+  el("btnSaveAs").addEventListener("click", doSaveAs);
+  el("btnImportCsv").addEventListener("click", doImportCsv);
+  el("btnExportCsv").addEventListener("click", doExportCsv);
+  el("fileInput").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const text = await f.text();
+    fileName = f.name;
+    fileHandle = null;
+    loadJsonText(text);
+    e.target.value = "";
+  });
+  el("csvFileInput").addEventListener("change", async (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const text = await f.text();
+    importCsvText(text, f.name);
+    e.target.value = "";
+  });
+
+  function doNew(){
+    if (dirty && !confirm("Discard unsaved changes and start a blank file?")) return;
+    labels = []; keys = []; cells = {};
+    fileHandle = null; fileName = "untitled.json";
+    markDirty(false);
+    updateFileLabel();
+    render();
+  }
+
+  async function doOpen(){
+    if (dirty && !confirm("Discard unsaved changes and open a different file?")) return;
+    if (supportsFS){
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: "JSON", accept: {"application/json": [".json"]} }]
+        });
+        fileHandle = handle;
+        const file = await handle.getFile();
+        fileName = file.name;
+        const text = await file.text();
+        loadJsonText(text);
+      } catch(e){ /* user cancelled */ }
+    } else {
+      el("fileInput").click();
+    }
+  }
+
+  function loadJsonText(text){
+    let data;
+    try { data = JSON.parse(text); }
+    catch(e){ alert("That file is not valid JSON."); return; }
+    const items = Array.isArray(data) ? data : (Array.isArray(data.items) ? data.items : null);
+    if (!items){ alert('Expected a JSON object with an "items" array (or a plain array of items).'); return; }
+    loadFromItems(items);
+    markDirty(false);
+    updateFileLabel();
+  }
+
+  async function doSave(){
+    if (!fileHandle) return doSaveAs();
+    const writable = await fileHandle.createWritable();
+    await writable.write(buildJsonText());
+    await writable.close();
+    markDirty(false);
+  }
+
+  async function doSaveAs(){
+    const text = buildJsonText();
+    if (supportsFS){
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName: fileName || "config.json",
+          types: [{ description: "JSON", accept: {"application/json": [".json"]} }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        fileHandle = handle;
+        fileName = handle.name;
+        markDirty(false);
+        updateFileLabel();
+      } catch(e){ /* cancelled */ }
+    } else {
+      const blob = new Blob([text], {type: "application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName || "config.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      markDirty(false);
+    }
+  }
+
+  function buildJsonText(){
+    return JSON.stringify({ items: toItems() }, null, 2);
+  }
+
+  function updateFileLabel(){
+    el("fileLabel").textContent = fileName ? fileName + (supportsFS && fileHandle ? "" : "  (browser download mode)") : "";
+    el("btnSave").disabled = !fileHandle;
+  }
+
+  // ---- CSV import / export -----------------------------------------------
+  function csvEscape(s){
+    s = String(s ?? "");
+    if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  function buildCsvText(){
+    const rows = [["Key", ...labels].map(csvEscape).join(",")];
+    const sortedKeys = [...keys].sort((a,b) => a.localeCompare(b));
+    sortedKeys.forEach(k => {
+      const row = [k, ...labels.map(l => (cells[k] && cells[k][l]) ? cells[k][l].value : "")];
+      rows.push(row.map(csvEscape).join(","));
+    });
+    return rows.join("\r\n");
+  }
+
+  function parseCsv(text){
+    const rows = [];
+    let row = [], field = "", inQuotes = false;
+    for (let i = 0; i < text.length; i++){
+      const c = text[i];
+      if (inQuotes){
+        if (c === '"'){
+          if (text[i+1] === '"'){ field += '"'; i++; } else { inQuotes = false; }
+        } else { field += c; }
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ""; }
+        else if (c === '\r') { /* skip */ }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ""; }
+        else field += c;
+      }
+    }
+    if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+    return rows.filter(r => !(r.length === 1 && r[0].trim() === ""));
+  }
+
+  function importCsvText(text, name){
+    if (dirty && !confirm("Discard unsaved changes and import this CSV?")) return;
+    const rows = parseCsv(text);
+    if (rows.length === 0){ alert("CSV file is empty."); return; }
+    const header = rows[0];
+    if (!header[0] || !header[0].trim()){ alert('The first header column must be "Key".'); return; }
+    const csvLabels = header.slice(1).map(l => l.trim()).filter(l => l !== "");
+    if (csvLabels.length === 0){ alert("CSV needs at least one label column after Key."); return; }
+
+    labels = []; keys = []; cells = {};
+    csvLabels.forEach(l => ensureLabel(l));
+    rows.slice(1).forEach(r => {
+      const k = (r[0] || "").trim();
+      if (!k) return;
+      ensureKey(k);
+      csvLabels.forEach((l, idx) => {
+        const v = r[idx + 1];
+        if (v !== undefined && v !== "") cells[k][l] = { value: v, content_type: "", tags: {} };
+      });
+    });
+
+    fileHandle = null;
+    fileName = name || "imported.json";
+    markDirty(true);
+    updateFileLabel();
+    render();
+  }
+
+  async function doImportCsv(){
+    if (dirty && !confirm("Discard unsaved changes and import a CSV file?")) return;
+    if (supportsFS){
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [{ description: "CSV", accept: {"text/csv": [".csv"]} }]
+        });
+        const file = await handle.getFile();
+        const text = await file.text();
+        importCsvText(text, file.name);
+      } catch(e){ /* cancelled */ }
+    } else {
+      el("csvFileInput").click();
+    }
+  }
+
+  async function doExportCsv(){
+    const text = buildCsvText();
+    const suggestedName = (fileName || "config").replace(/\.json$/i, "") + ".csv";
+    if (supportsFS){
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [{ description: "CSV", accept: {"text/csv": [".csv"]} }]
+        });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+      } catch(e){ /* cancelled */ }
+    } else {
+      const blob = new Blob([text], {type: "text/csv"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = suggestedName;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  }
+
+  window.addEventListener("beforeunload", (e) => {
+    if (dirty) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+})();
+</script>
+</body>
+</html>
